@@ -13,6 +13,8 @@ import requests
 from collections import defaultdict
 from urllib.request import urlretrieve
 import zipfile
+import time
+import subprocess
 
 
 MAX_TRIES = 5
@@ -82,12 +84,15 @@ def star_img2score(star_img):
 
 
 def parse_ratings(rc):
-    nvotes = int(str(rc.contents[2]).lstrip('\r\n ').rstrip('\r\n ').split(' ')[0][1:])
-    star_list = rc.contents[1].contents
-    avg_rating = 0.0
-    for star_img in star_list:
-        avg_rating += star_img2score(star_img)
-    return avg_rating, nvotes
+    try:
+        nvotes = int(str(rc.contents[2]).lstrip('\r\n ').rstrip('\r\n ').split(' ')[0][1:])
+        star_list = rc.contents[1].contents
+        avg_rating = 0.0
+        for star_img in star_list:
+            avg_rating += star_img2score(star_img)
+        return avg_rating, nvotes
+    except:
+        return 0.0, 0
 
 
 def get_all_reviews_from_trs(trs):
@@ -150,8 +155,7 @@ def get_metadata(soup):
         trs = relevant_tables[0].find_all("tr")
         all_reviews = get_all_reviews_from_trs(trs)
     else:
-        print("No reviews found")
-        import pdb; pdb.set_trace()
+        print("No reviews found\n\n")
         all_reviews = []
     return {
         'title': str(title).lstrip('\r\n ').rstrip('\r\n '),
@@ -247,6 +251,7 @@ def make_targets(args, url_dicts):
 def perform_download(args, url_dicts):
     for url in url_dicts.keys():
         success = False
+        url_dicts[url]['success'] = False
         for tries in range(MAX_TRIES):
             print('[{}/{}] Downloading {}'.format(tries, MAX_TRIES, url))
             try:
@@ -256,31 +261,54 @@ def perform_download(args, url_dicts):
             except:
                 import pdb; pdb.set_trace()
                 continue
+
+        target_dir = url_dicts[url]['dir_location']
         if not(success):
             print("[PROBLEM] Could not download {}".format(url))
         else:
             # Unzip it to the dir
-            target_dir = url_dicts[url]['dir_location']
-            with zipfile.ZipFile(zip_location, 'r') as f:
-                f.extractall(target_dir)
-            for filename in os.listdir(target_dir):
-                if filename.endswith(".wad") or filename.endswith(".WAD"):
-                    wad_file = os.path.join(target_dir, filename)
-                    url_dicts[url]["wad_file"] = wad_file
-                    break
+            try:
+                with zipfile.ZipFile(zip_location, 'r') as f:
+                    f.extractall(target_dir)
+                for filename in os.listdir(target_dir):
+                    if filename.endswith(".wad") or filename.endswith(".WAD"):
+                        wad_file = os.path.join(target_dir, filename)
+                        url_dicts[url]["wad_file"] = wad_file
+                        break
+                url_dicts[url]['success'] = True
+            except:
+                cmd = ["unzip", zip_location, "-d", target_dir]
+                print("Using subprocess to extract zipfile.")
+                print("$" + " ".join(cmd))
+                subprocess.call(cmd)
+                for filename in os.listdir(target_dir):
+                    if filename.endswith(".wad") or filename.endswith(".WAD"):
+                        wad_file = os.path.join(target_dir, filename)
+                        url_dicts[url]["wad_file"] = wad_file
+                        break
+                url_dicts[url]['success'] = True
+                pass
     return url_dicts
 
 if __name__ == '__main__':
     # Get arguments
     args = get_args()
     # Generate list of files to download, mapped to corresponding Metadata struct
+    start = time.time()
     url_dicts = get_urls(args)
+    print("Parsed website in {}s".format(time.time() - start))
     # Generate corresponding dump locations
     url_dicts = make_targets(args, url_dicts)
     # Download and unzip, keep track of the following:
     # online file location, zip location, WAD file location, metadata
     # Dump the dataframe
+    print('Starting downloads')
+    start = time.time()
     url_dicts = perform_download(args, url_dicts)
+    print('Finished downloads in {}s'.format(time.time() - start))
     # Create a pandas dataframe with all the above information
+    start = time.time()
+    print("Making and dumping dataframe")
     df = pd.DataFrame.from_dict(url_dicts, orient='index')
     df.to_pickle(path=args.output_pkl)
+    print("Made and dumped dataframe in {}s".format(time.time() - start))
