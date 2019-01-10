@@ -50,6 +50,7 @@ def get_args():
     parser.add_argument("-ocsv", "--output_pkl", type=str, default="all_wads.pkl", help="Either absolute path, or path relative to output_dir where pickle file containing information about WADs is dumped")  # noqa
     parser.add_argument("-l", "--limit", type=int, default=-1, help="Number of WAD files to download. If < 0, then unlimited.")
     parser.add_argument("-m", "--mirrors", nargs="+", type=str, default=["New York"], help="Which mirror(s) to download from")
+    parser.add_argument("--reconstruct", action="store_true", help="Run this after manually unzipping the few weird downloads")
     args = parser.parse_args()
     # convert args.output_pkl to absolute path
     if not(os.path.isabs(args.output_pkl)):
@@ -263,6 +264,7 @@ def perform_download(args, url_dicts):
                 continue
 
         target_dir = url_dicts[url]['dir_location']
+        url_dicts[url]["wad_file"] = []
         if not(success):
             print("[PROBLEM] Could not download {}".format(url))
         else:
@@ -270,12 +272,13 @@ def perform_download(args, url_dicts):
             try:
                 with zipfile.ZipFile(zip_location, 'r') as f:
                     f.extractall(target_dir)
+
                 for filename in os.listdir(target_dir):
                     if filename.endswith(".wad") or filename.endswith(".WAD"):
                         wad_file = os.path.join(target_dir, filename)
-                        url_dicts[url]["wad_file"] = wad_file
-                        break
+                        url_dicts[url]["wad_file"].append(wad_file)
                 url_dicts[url]['success'] = True
+
             except:
                 cmd = ["unzip", zip_location, "-d", target_dir]
                 print("Using subprocess to extract zipfile.")
@@ -284,31 +287,52 @@ def perform_download(args, url_dicts):
                 for filename in os.listdir(target_dir):
                     if filename.endswith(".wad") or filename.endswith(".WAD"):
                         wad_file = os.path.join(target_dir, filename)
-                        url_dicts[url]["wad_file"] = wad_file
-                        break
+                        url_dicts[url]["wad_file"].append(wad_file)
                 url_dicts[url]['success'] = True
-                pass
     return url_dicts
+
+
+def reconstruct(args):
+    df = pd.read_pickle(args.output_pkl)
+    for i in range(df.shape[0]):
+        url = df.index[i]
+        new_wad_file = []
+        target_dir = df.iloc[i].dir_location
+        for filename in os.listdir(df.iloc[i].dir_location):
+            if filename.endswith(".wad") or filename.endswith(".WAD"):
+                wad_file = os.path.join(target_dir, filename)
+                new_wad_file.append(wad_file)
+        df.set_value(url, 'wad_file', new_wad_file)
+    return df
+
 
 if __name__ == '__main__':
     # Get arguments
     args = get_args()
-    # Generate list of files to download, mapped to corresponding Metadata struct
-    start = time.time()
-    url_dicts = get_urls(args)
-    print("Parsed website in {}s".format(time.time() - start))
-    # Generate corresponding dump locations
-    url_dicts = make_targets(args, url_dicts)
-    # Download and unzip, keep track of the following:
-    # online file location, zip location, WAD file location, metadata
-    # Dump the dataframe
-    print('Starting downloads')
-    start = time.time()
-    url_dicts = perform_download(args, url_dicts)
-    print('Finished downloads in {}s'.format(time.time() - start))
-    # Create a pandas dataframe with all the above information
-    start = time.time()
-    print("Making and dumping dataframe")
-    df = pd.DataFrame.from_dict(url_dicts, orient='index')
-    df.to_pickle(path=args.output_pkl)
-    print("Made and dumped dataframe in {}s".format(time.time() - start))
+    if args.reconstruct:
+        print("Reconstructing from {}".format(args.output_pkl))
+        df = reconstruct(args)
+        start = time.time()
+        print("Dumping dataframe")
+        df.to_pickle(path=args.output_pkl)
+        print("Dumped dataframe in {}s".format(time.time() - start))
+    else:
+        # Generate list of files to download, mapped to corresponding Metadata struct
+        start = time.time()
+        url_dicts = get_urls(args)
+        print("Parsed website in {}s".format(time.time() - start))
+        # Generate corresponding dump locations
+        url_dicts = make_targets(args, url_dicts)
+        # Download and unzip, keep track of the following:
+        # online file location, zip location, WAD file location, metadata
+        # Dump the dataframe
+        print('Starting downloads')
+        start = time.time()
+        url_dicts = perform_download(args, url_dicts)
+        print('Finished downloads in {}s'.format(time.time() - start))
+        # Create a pandas dataframe with all the above information
+        start = time.time()
+        print("Making and dumping dataframe")
+        df = pd.DataFrame.from_dict(url_dicts, orient='index')
+        df.to_pickle(path=args.output_pkl)
+        print("Made and dumped dataframe in {}s".format(time.time() - start))
