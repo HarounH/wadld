@@ -1,6 +1,4 @@
-from PIL import Image, ImageDraw
-
-#from wadreader import *
+import cv2
 import numpy as np
 
 BLACK = (0, 0, 0)
@@ -39,7 +37,6 @@ def find_covering_face(line, ordered_incident_vertices):
         else:
             face.append(next_edge)
             cur_edge = next_edge
-    print(face)
     return face
 
 
@@ -85,8 +82,8 @@ def draw_traversable_space(linedefs, ordered_incident_vertices, max_coord_x,
     @param ordered_incident_vertices: incident vertices for each 
     '''
 
-    image = Image.new('RGB', (2*max_coord_x+100, 2*max_coord_y+100), BLACK)
-    draw = ImageDraw.Draw(image)
+    image = np.zeros((2*max_coord_x+100, 2*max_coord_y+100))
+    #img = cv2.fromarray(image)
     faces = []
     line_is_wall = {}
     for linedef in linedefs:
@@ -106,21 +103,14 @@ def draw_traversable_space(linedefs, ordered_incident_vertices, max_coord_x,
     already_drawn = {}
     for face in faces:
         edge_list = []
-        #hash_string = str(sorted(face))
-        #if hash_string in already_drawn:
-        #    continue
-        #already_drawn[hash_string] = True
-
-        #white_space = False
         for edge in face:
+            #edge_list.append(edge[0].vec)
+            #edge_list.append(edge[1].vec)
             edge_list.append(edge[0])
-            #if not line_is_wall[edge]:
-            #    white_space = True
         translated_edge_list = translate_edge_list(edge_list, max_coord_x,
                                                    max_coord_y)
-        white_space = True
-        if white_space:
-            draw.polygon(translated_edge_list, fill=WHITE, outline=RED)
+        cv2.fillConvexPoly(image, np.array(translated_edge_list,
+                                     dtype=np.int32),255)
     return image
 
 
