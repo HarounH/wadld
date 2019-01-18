@@ -15,14 +15,14 @@ from urllib.request import urlretrieve
 import zipfile
 import time
 import subprocess
-
+import pickle
 
 MAX_TRIES = 5
 WEBSITE_URL = "https://www.doomworld.com"
-BASE_URL = "https://www.doomworld.com/idgames/levels/doom/"
+BASE_URLS = ["https://www.doomworld.com/idgames/levels/doom2/", "https://www.doomworld.com/idgames/levels/doom/"]
 IFRAME_REVIEW_BASE = "https://www.doomworld.com/idgames/"  # Objects for review task are simply appended to this
 SPECIAL_WAD_PREFIXES = {"Ports": "Ports", "megawads": "megawads", "deathmatch": "deathmatch",}
-
+HTML_PARSER = "html5lib"
 
 def is_bad_url(url):
     return ("idgames://" in url) or (".php?" in url) or (url.endswith(".zip")) or (url.endswith(".txt")) or url in [
@@ -49,8 +49,9 @@ def get_args():
     parser.add_argument("-od", "--output_dir", default="dataset/", type=str, help="Location to make dataset")  # noqa
     parser.add_argument("-ocsv", "--output_pkl", type=str, default="all_wads.pkl", help="Either absolute path, or path relative to output_dir where pickle file containing information about WADs is dumped")  # noqa
     parser.add_argument("-l", "--limit", type=int, default=-1, help="Number of WAD files to download. If < 0, then unlimited.")
-    parser.add_argument("-m", "--mirrors", nargs="+", type=str, default=["New York"], help="Which mirror(s) to download from")
+    parser.add_argument("-m", "--mirrors", nargs="+", type=str, default=["Idaho"], help="Which mirror(s) to download from")
     parser.add_argument("--reconstruct", action="store_true", help="Run this after manually unzipping the few weird downloads")
+    parser.add_argument("--resume", type=str, default="", help="Pickle file containing urls. Allows you to skip parsing the web.")
     args = parser.parse_args()
     # convert args.output_pkl to absolute path
     if not(os.path.isabs(args.output_pkl)):
@@ -122,7 +123,7 @@ def get_all_reviews_from_query(url):
     # Takes in a URL that is IFRAME_REVIEW_BASE + "iframe_review.php?id={}".format(x)
     # Performs the query
     # Gets all reviews
-    review_soup = BeautifulSoup(requests.get(url).content)
+    review_soup = BeautifulSoup(requests.get(url).content, HTML_PARSER)
     trs = review_soup.find_all("tr")
     return get_all_reviews_from_trs(trs)
 
@@ -171,7 +172,7 @@ def get_urls(args):
     # Recursively go through URLS.
     wad_file_dict = {}
     visited = defaultdict(lambda: False)
-    current_urls = [BASE_URL]
+    current_urls = BASE_URLS
 
     # BFS through website.
     while (len(current_urls) > 0) and ((args.limit < 0) or (len(wad_file_dict) < args.limit)):
@@ -182,11 +183,14 @@ def get_urls(args):
                 break
             current_page = requests.get(current_url, allow_redirects=True)
             try:
-                current_soup = BeautifulSoup(current_page.text)
+                current_soup = BeautifulSoup(current_page.text, HTML_PARSER)
             except:
                 print("Page at {} couldn't be souped. Skipping.".format(current_url))
                 continue
             anchors = current_soup.find_all('a')
+            # if "0-9" in current_url:
+            #     import pdb; pdb.set_trace()
+
             # Case 1: This is 1 hop from a .zip file
             # Case 2: Need to go deeper
             case1 = False
@@ -250,11 +254,13 @@ def make_targets(args, url_dicts):
 
 
 def perform_download(args, url_dicts):
-    for url in url_dicts.keys():
+    count = len(url_dicts)
+    for url_idx, url in enumerate(list(url_dicts.keys())):
         success = False
+
         url_dicts[url]['success'] = False
         for tries in range(MAX_TRIES):
-            print('[{}/{}] Downloading {}'.format(tries, MAX_TRIES, url))
+            print('[Tries {}/{}] Downloading {}'.format(tries, MAX_TRIES, url))
             try:
                 zip_location, _ = urlretrieve(url, url_dicts[url]['zip_location'])
                 success = True
@@ -272,23 +278,24 @@ def perform_download(args, url_dicts):
             try:
                 with zipfile.ZipFile(zip_location, 'r') as f:
                     f.extractall(target_dir)
-
-                for filename in os.listdir(target_dir):
-                    if filename.endswith(".wad") or filename.endswith(".WAD"):
-                        wad_file = os.path.join(target_dir, filename)
-                        url_dicts[url]["wad_file"].append(wad_file)
-                url_dicts[url]['success'] = True
-
             except:
-                cmd = ["unzip", zip_location, "-d", target_dir]
+                cmd = ["unzip", "-o", zip_location, "-d", target_dir]
                 print("Using subprocess to extract zipfile.")
                 print("$" + " ".join(cmd))
                 subprocess.call(cmd)
-                for filename in os.listdir(target_dir):
-                    if filename.endswith(".wad") or filename.endswith(".WAD"):
-                        wad_file = os.path.join(target_dir, filename)
-                        url_dicts[url]["wad_file"].append(wad_file)
-                url_dicts[url]['success'] = True
+            for filename in os.listdir(target_dir):
+                if filename.endswith(".wad") or filename.endswith(".WAD"):
+                    wad_file = os.path.join(target_dir, filename)
+                    url_dicts[url]["wad_file"].append(wad_file)
+                    url_dicts[url]['success'] = True
+                elif os.path.isdir(os.path.join(target_dir, filename)):
+                    # if its a directory, then move the wad back.
+                    for inner_filename in os.listdir(os.path.join(target_dir, filename)):
+                        if inner_filename.endswith(".wad") or inner_filename.endswith(".WAD"):
+                            wad_file = os.path.join(target_dir, filename, inner_filename)
+                            url_dicts[url]["wad_file"].append(wad_file)
+                            url_dicts[url]['success'] = True
+        print("[{}/{}] Download done".format(url_idx, count))
     return url_dicts
 
 
@@ -302,6 +309,12 @@ def reconstruct(args):
             if filename.endswith(".wad") or filename.endswith(".WAD"):
                 wad_file = os.path.join(target_dir, filename)
                 new_wad_file.append(wad_file)
+            elif os.path.isdir(os.path.join(target_dir, filename)):
+                # if its a directory, then move the wad back.
+                for inner_filename in os.listdir(os.path.join(target_dir, filename)):
+                    if inner_filename.endswith(".wad") or inner_filename.endswith(".WAD"):
+                        wad_file = os.path.join(target_dir, filename, inner_filename)
+                        new_wad_file.append(wad_file)
         df.set_value(url, 'wad_file', new_wad_file)
     return df
 
@@ -319,14 +332,21 @@ if __name__ == '__main__':
     else:
         # Generate list of files to download, mapped to corresponding Metadata struct
         start = time.time()
-        url_dicts = get_urls(args)
+        if args.resume == "":
+            url_dicts = get_urls(args)
+            with open("resumable.checkpoint", "wb") as f:
+                pickle.dump(url_dicts, f)
+            print("Dumped url dictionary to allow for future resuming.")
+        else:
+            with open(args.resume, "rb") as f:
+                url_dicts = pickle.load(f)
         print("Parsed website in {}s".format(time.time() - start))
         # Generate corresponding dump locations
         url_dicts = make_targets(args, url_dicts)
         # Download and unzip, keep track of the following:
         # online file location, zip location, WAD file location, metadata
         # Dump the dataframe
-        print('Starting downloads')
+        print('Starting {} downloads'.format(len(url_dicts)))
         start = time.time()
         url_dicts = perform_download(args, url_dicts)
         print('Finished downloads in {}s'.format(time.time() - start))
