@@ -1,6 +1,6 @@
 import os, struct
 
-from data_transformation import *
+from utils.data_transformation import *
 
 from collections import defaultdict
 
@@ -21,6 +21,7 @@ DATA_IDX = 0
 LINEDEF_SIZE = 14
 VERTEX_SIZE = 4
 
+
 class Vertex():
     def __init__(self, x, y):
         self.x = x
@@ -40,6 +41,10 @@ class LineDef():
         self.sec_tag = sec_tag
         self.front_sidedef = front_sidedef
         self.back_sidedef = back_sidedef
+
+    def is_wall(self):
+        # Unsure if 1 & flags is a boolean datatype. Probably is.
+        return (1 & self.flags)
 
 
 def get_wad_paths(wad_dir):
@@ -117,6 +122,7 @@ def get_linedefs(linedefs_data):
     @return: linedefs: a list of Linedef objects
     '''
     num_sides = int(len(linedefs_data)/LINEDEF_SIZE)
+    print("num_sides={}".format(num_sides))
     linedefs = []
 
     for i in range(num_sides):
@@ -138,7 +144,6 @@ def get_linedefs(linedefs_data):
         linedefs.append(LineDef(vertex_start_idx, vertex_end_idx, flags,
                                 special_type, sector_tag, front_sidedef,
                                 back_sidedef))
-
     return linedefs
 
 
@@ -234,4 +239,3 @@ def decode_wad(wad):
                               vertexes[line.end_idx]),\
                              line) for line in linedefs]
     return vertexes, max_coord_x, max_coord_y, linedefs_by_vertices, ordered_incident_vertices
-

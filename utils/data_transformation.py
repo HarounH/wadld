@@ -61,6 +61,7 @@ def init_ordered_incident_vertices(vertexes, linedefs, adj_list):
 
     return ordered_incident_edges
 
+
 def translate_edge_list(edge_list, offset_x, offset_y):
     ''' Transforms coordinates from wad coordinate space
     to PIL coordinate space.
@@ -79,7 +80,7 @@ def draw_traversable_space(linedefs, ordered_incident_vertices, max_coord_x,
     ''' Draws the traversable space of the level as a black and white image
     where the areas which the player can walk in are white.
     @param linedefs: the linedefs from the DOOM was
-    @param ordered_incident_vertices: incident vertices for each 
+    @param ordered_incident_vertices: incident vertices for each
     '''
 
     image = np.zeros((2*max_coord_x+100, 2*max_coord_y+100))
@@ -114,3 +115,50 @@ def draw_traversable_space(linedefs, ordered_incident_vertices, max_coord_x,
     return image
 
 
+def wad_space2cv_space(point, offset_x, offset_y):
+    """ Transforms coordinates from wad coordinate space
+    to PIL coordinate space. This transformation corresponds to a translation
+
+    @param: point: the point to translate
+        can either be a tuple ((x, y)), list ([x, y]), or any object with x and y attributes
+    @param: offset_x: translation along x axis
+    @param: offset_y: translation along y axis
+
+    return
+    ----
+        a tuple representing the x and y coordinates
+    """
+    if isinstance(point, tuple) or isinstance(point, list):
+        x, y = point
+    else:
+        x = point.x
+        y = point.y
+    return (x + offset_x, offset_y - y)
+
+
+def draw_linedefs(linedefs, max_coord_x, max_coord_y, criterion=lambda linedef: True, color=(255, 255, 255), **kwargs):
+    """ Draws linedefs that satisfy a criterion and returns corresponding image array in (M, N, 3) format
+    Takes in optional kwargs that are passed to cv2.line call
+    Args
+        linedefs: iterable of ((Vertex, Vertex), LineDef) type. (See wadreader.py)
+        max_coord_x (int)
+        max_coord_y (int)
+        criterion: fn: type(element of linedefs) -> bool
+        color (int tuple of length 3 - BGR channels)
+        kwargs: optional arguments passed to cv2.line
+
+    Returns
+        image: numpy array that captures linedefs. values are in the range: [0, 225]
+    """
+    image = np.zeros((2*max_coord_x+100, 2*max_coord_y+100, 3)).astype(np.float32)
+    if 'thickness' not in kwargs:
+        kwargs['thickness'] = 32  # Need a big thickness for large images.
+    count = 0
+    for linedef in linedefs:
+        if not(criterion(linedef)):
+            continue
+        count += 1
+        points = [wad_space2cv_space(point, max_coord_x, max_coord_y) for point in linedef[0]]
+        cv2.line(image, (points[0]), (points[1]), color, **kwargs)
+    print("Drew {} lines".format(count))
+    return image
