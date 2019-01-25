@@ -6,6 +6,7 @@ import numpy as np
 from utils.data_utils import *
 from utils.linedef import LineDef
 from utils.sidedef import Sidedef
+from utils.sector import Sector
 
 
 # offsets for reading WAD
@@ -23,6 +24,7 @@ DATA_IDX = 0
 LINEDEF_SIZE = 14
 VERTEX_SIZE = 4
 SIDEDEF_SIZE = 30
+SECTOR_SIZE = 26
 
 SIDEDEF_TEXTURE_START = 20
 SIDEDEF_TEXTURE_END = 28
@@ -116,7 +118,20 @@ def parse_sectors(sectors_string):
     @param: sectors_string: (str) byte string of sectors data
     @return: (list) of Sectors
     '''
-    pass
+    num_sectors = int(len(sectors_string) / SECTOR_SIZE)
+    sectors = []
+    for i in range(num_sectors):
+        sector_start = i*SECTOR_SIZE
+        sector_string = sectors_string[sector_start:sector_start+SECTOR_SIZE]
+        fl_hgt = struct.unpack("<h",
+                                sector_string[0:2])[DATA_IDX]
+        cl_hgt = struct.unpack("<h",
+                                sector_string[2:4])[DATA_IDX]
+        fl_tx = sector_string[4:12].decode('UTF8').rstrip("\x00")
+        cl_tx = sector_string[12:20].decode('UTF8').rstrip("\x00")
+        brt  = struct.unpack("<h", sector_string[20:22])[DATA_IDX]
+        sectors.append(Sector(fl_hgt, cl_hgt, fl_tx, cl_tx, brt))
+    return sectors
 
 
 def parse_vertexes(vertexes_string):
@@ -165,6 +180,7 @@ def decode_wad(wad):
     vertices = parse_vertexes(chunk_data(wad_index['VERTEXES'], wad_data))
     linedefs = parse_linedefs(chunk_data(wad_index['LINEDEFS'], wad_data))
     sidedefs = parse_sidedefs(chunk_data(wad_index['SIDEDEFS'], wad_data))
+    sectors = parse_sectors(chunk_data(wad_index['SECTORS'], wad_data))
 
-    return vertices, linedefs, sidedefs
+    return vertices, linedefs, sidedefs, sectors
 

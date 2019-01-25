@@ -3,10 +3,12 @@ import cv2
 from utils.rendering import draw_traversable_space
 from utils.wadreader import decode_wad
 from utils.io_utils import get_wad_paths
+from ml.feature_extraction import feature_mat
 
 def image_tensor(wad_path):
-    vertexes, linedefs, sidedefs = decode_wad(wad_path)
-    return draw_traversable_space(vertexes, linedefs)
+    vertices, linedefs, sidedefs, sectors = decode_wad(wad_path)
+    print(feature_mat(vertices, linedefs, sidedefs, sectors))
+    return draw_traversable_space(vertices, linedefs)
 
 def main(wad_path):
     image = image_tensor(wad_path)
