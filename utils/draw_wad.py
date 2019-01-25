@@ -1,8 +1,9 @@
 import cv2
 
-from data_transformation import *
-from wadreader import *
+from utils.data_transformation import *
+from utils.wadreader import *
 from matplotlib import pyplot as plt
+
 
 def image_tensor(wad_path):
     vertexes, max_coord_x, max_coord_y, linedefs, ordered_incident_vertices = \

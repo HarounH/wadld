@@ -1,6 +1,3 @@
-''' TODO: docstring
-'''
-
 import os
 import struct
 from collections import defaultdict
@@ -30,7 +27,6 @@ SIDEDEF_SIZE = 30
 SIDEDEF_TEXTURE_START = 20
 SIDEDEF_TEXTURE_END = 28
 
-# This class is pointless
 class Vertex():
     def __init__(self, x, y):
         self.x = x
@@ -85,6 +81,7 @@ def parse_linedefs(linedefs_data):
     @return: linedefs: a list of Linedef objects
     '''
     num_sides = int(len(linedefs_data)/LINEDEF_SIZE)
+    print("num_sides={}".format(num_sides))
     linedefs = []
 
     for i in range(num_sides):

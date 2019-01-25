@@ -6,9 +6,6 @@ from utils.io_utils import get_wad_paths
 
 def image_tensor(wad_path):
     vertexes, linedefs, sidedefs = decode_wad(wad_path)
-    for sidedef in sidedefs:
-        print(sidedef.texture)
-    1/0
     return draw_traversable_space(vertexes, linedefs)
 
 def main(wad_path):
