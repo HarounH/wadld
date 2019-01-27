@@ -29,12 +29,24 @@ SECTOR_SIZE = 26
 SIDEDEF_TEXTURE_START = 20
 SIDEDEF_TEXTURE_END = 28
 
+
 class Vertex():
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.vec = np.array([x,y])
 
+    def __str__(self):
+         return "({}, {})".format(self.x, self.y)
+
+    def __eq__(self, other):
+        return (self.x == other.x) and (self.y == other.y)
+
+    def __ne__(self, other):
+        return (self.x != other.x) or (self.y != other.y)
+
+    def __hash__(self):
+        return hash((self.x, self.y))
 
 def get_wad_data(wad):
     ''' Reads wad file into byte string.
@@ -183,4 +195,3 @@ def decode_wad(wad):
     sectors = parse_sectors(chunk_data(wad_index['SECTORS'], wad_data))
 
     return vertices, linedefs, sidedefs, sectors
-

@@ -1,6 +1,17 @@
 from collections import defaultdict
 import numpy as np
 
+def translate_vertex(vertex, offset_x, offset_y):
+    ''' Transforms coordinates from wad coordinate space
+    to PIL coordinate space.
+
+    @param: vertex (int tuple): the vertex to translate
+    @param: offset_x: translation along x axis
+    @param: offset_y: translation along y axis
+    '''
+    return (offset_x + vertex[0], offset_y - vertex[1])
+
+
 def translate_edge_list(edge_list, offset_x, offset_y):
     ''' Transforms coordinates from wad coordinate space
     to PIL coordinate space.
@@ -59,8 +70,10 @@ def adjacency_lists(linedefs):
     '''
     adj_mat = defaultdict(list)
     for linedef in linedefs:
-        adj_mat[linedef.vertex_start_idx].append(linedef.vertex_end_idx)
-        adj_mat[linedef.vertex_end_idx].append(linedef.vertex_start_idx)
+        start = linedef.vertex_start_idx
+        end = linedef.vertex_end_idx
+        if end not in adj_mat[start]:
+            adj_mat[start].append(end)
+        if start not in adj_mat[end]:
+            adj_mat[end].append(start)
     return adj_mat
-
-

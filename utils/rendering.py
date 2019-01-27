@@ -42,24 +42,45 @@ def find_covering_face(line, ordered_incident_vertices):
     return face
 
 
-def draw_traversable_space(vertices, linedefs):
+def draw_linedefs(vertices, linedefs, color=(255, 255, 255), thickness=32, **kwargs):
+    ''' Draws the linedefs provided in specified color onto a numpy array
+    @param vertices (utils.wadreader.Vertex list): list of vertices to use.
+    @param linedefs (utils.linedef.LineDef list): list of linedefs to draw
+    '''
+    max_coord_x, max_coord_y = find_max_coords(vertices)
+    image = np.zeros((2*max_coord_x+100, 2*max_coord_y+100, 3))
+    for linedef in linedefs:
+        start = translate_vertex(vertices[linedef.vertex_start_idx].vec, max_coord_x, max_coord_y)
+        end = translate_vertex(vertices[linedef.vertex_end_idx].vec, max_coord_x, max_coord_y)
+        cv2.line(image, start, end, color, thickness=thickness, **kwargs)
+    return image
+
+
+def draw_traversable_space(vertices, linedefs, debug=False):
     ''' Draws the traversable space of the level as a black and white image
     where the areas which the player can walk in are white.
     @param linedefs: the linedefs from the DOOM was
-    @param ordered_incident_vertices: incident vertices for each 
+    @param ordered_incident_vertices: incident vertices for each
     '''
     max_coord_x, max_coord_y = find_max_coords(vertices)
     adj_lists = adjacency_lists(linedefs)
+    if debug:
+        print("Initialized adj_lists variable")
     ordered_incident_vertices = init_ordered_incident_vertices(vertices,
                                                                linedefs,
                                                                adj_lists)
+    if debug:
+        print("Initialized ordered_incident_vertices variable")
     image = np.zeros((2*max_coord_x+100, 2*max_coord_y+100))
+    if debug:
+        print("Created image of size {}".format(image.shape))
     faces = []
     line_is_wall = {}
     linedefs_by_vertices = [((vertices[line.vertex_start_idx],
                               vertices[line.vertex_end_idx]),\
                              line) for line in linedefs]
-
+    if debug:
+        print("Initialized linedefs_by_vertices variable")
     for linedef in linedefs_by_vertices:
         line = linedef[0]
         linedef_flags = linedef[1].flags
@@ -73,7 +94,8 @@ def draw_traversable_space(vertices, linedefs):
             faces.append(find_covering_face((line[1],line[0]),
                                             ordered_incident_vertices))
             faces.append(find_covering_face(line, ordered_incident_vertices))
-
+    if debug:
+        print("Initialized faces variable")
     for face in faces:
         edge_list = []
         for edge in face:
@@ -83,4 +105,3 @@ def draw_traversable_space(vertices, linedefs):
         cv2.fillConvexPoly(image, np.array(translated_edge_list,
                                            dtype=np.int32),255)
     return image
-
