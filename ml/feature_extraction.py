@@ -9,6 +9,7 @@ def init_texture_lex(sidedefs, sectors):
         textures.append(sector.floor_texture)
         textures.append(sector.ceiling_texture)
     textures_set = set(textures)
+    textures_set.remove('-')
     texture_lex = {}
     for i, texture in enumerate(textures_set):
         texture_lex[texture] = i
@@ -40,7 +41,6 @@ def extract_features(line, vertices, sidedefs, sectors, texture_lex):
     sidedef = sidedefs[line.front_sidedef]
     sector = sectors[sidedef.sector]
 
-    # set texture features
     textures = [texture_lex[sidedef.texture],
                 texture_lex[sector.floor_texture],
                 texture_lex[sector.ceiling_texture]]
