@@ -24,6 +24,8 @@ def init_feature_vec(vertex_start, vertex_end, textures, sector, num_textures):
 
     # set texture features
     for i, texture in enumerate(textures):
+        if texture == None:
+            continue
         offset = 4+i*num_textures+texture
         feature_vec[offset]=1
 
@@ -40,10 +42,9 @@ def extract_features(line, vertices, sidedefs, sectors, texture_lex):
 
     sidedef = sidedefs[line.front_sidedef]
     sector = sectors[sidedef.sector]
-
-    textures = [texture_lex[sidedef.texture],
-                texture_lex[sector.floor_texture],
-                texture_lex[sector.ceiling_texture]]
+    textures = [texture_lex.get(sidedef.texture),
+                texture_lex.get(sector.floor_texture),
+                texture_lex.get(sector.ceiling_texture)]
     front_feature_vec = init_feature_vec(vertex_start, vertex_end, textures,
                                          sector, len(texture_lex))
     if line.back_sidedef == -1:
@@ -53,9 +54,9 @@ def extract_features(line, vertices, sidedefs, sectors, texture_lex):
     sector = sectors[sidedef.sector]
 
     # set texture features
-    textures = [texture_lex[sidedef.texture],
-                texture_lex[sector.floor_texture],
-                texture_lex[sector.ceiling_texture]]
+    textures = [texture_lex.get(sidedef.texture),
+                texture_lex.get(sector.floor_texture),
+                texture_lex.get(sector.ceiling_texture)]
 
     back_feature_vec = init_feature_vec(vertex_end, vertex_start, textures,
                                         sector, len(texture_lex))
