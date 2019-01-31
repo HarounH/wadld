@@ -2,8 +2,9 @@
 DOOM WAD Level Designer, aka wadld (using ml)
 
 # Requirements
-- Everything uses Python3 (Anaconda), PyTorch 1.0, no backward compatibility guaranteed.
+- Python 3.7 (Anaconda), PyTorch 1.0, no backward compatibility guaranteed.
 - html5lib for parsing websites to get data (`pip install html5lib` to install it)
+- omgifol for some WAD handling
 
 ## Data
 We get user generated WAD files from https://www.doomworld.com/idgames/levels/doom/.
