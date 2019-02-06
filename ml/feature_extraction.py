@@ -1,7 +1,7 @@
 import numpy as np
 from omg import *
 
-def feature_mat(vertices, linedefs, vec_backs=True, normalize=True):
+def feature_mat(vertices, linedefs, vec_backs=False, normalize=True):
     ''' Instantiates feature matrix of coordinates of linedefs.
 
     @param: vertices: list of vertex objects for a map from omg lib
@@ -25,4 +25,3 @@ def feature_mat(vertices, linedefs, vec_backs=True, normalize=True):
         from sklearn.preprocessing import normalize
         return normalize(mat, axis=1)
     return mat
-
