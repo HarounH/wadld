@@ -95,7 +95,7 @@ class MapEditorPreprocessor(mapedit.MapEditor):
                 max_y = y
         return min_x, min_y, max_x, max_y
 
-    def enclose(self, in_place=False, force=False):
+    def enclose(self, in_place=False, force=False, boundary=100):
         ''' Function to surround the wad file using 4 extra lines.
         Also sets a flag denoting that this MapEditor has been enclosed.
         Unless the force flag is set to True, it will not be enclosed a second time.
@@ -103,23 +103,42 @@ class MapEditorPreprocessor(mapedit.MapEditor):
         if in_place:
             target = self
         else:
-            target = copy.deepcopy(self)
+            target = copy.copy(self)
 
-        if self.enclosed and not(force):
+        if target.enclosed and not(force):
             return target
 
         # Enclosing time!
-
         # First, construct necessary vertices.
-        min_x, min_y, max_x, max_y = self.get_range()
-        boundary_width = 100
-        bl_vertex = mapedit.Vertex(x=(min_x - boundary_width), y=(min_y - boundary_width))
-        tl_vertex = mapedit.Vertex(x=(min_x - boundary_width), y=(max_y + boundary_width))
-        br_vertex = mapedit.Vertex(x=(max_x + boundary_width), y=(min_y - boundary_width))
-        tr_vertex = mapedit.Vertex(x=(max_x + boundary_width), y=(max_y + boundary_width))
+        min_x, min_y, max_x, max_y = target.get_range(used_vxi=target.construct_vxi())
+        bl_vertex = mapedit.Vertex(x=(min_x - boundary), y=(min_y - boundary))
+        tl_vertex = mapedit.Vertex(x=(min_x - boundary), y=(max_y + boundary))
+        br_vertex = mapedit.Vertex(x=(max_x + boundary), y=(min_y - boundary))
+        tr_vertex = mapedit.Vertex(x=(max_x + boundary), y=(max_y + boundary))
 
-        # TODO: @chase: Need to create a LineDef for each of these points
-        raise NotImplementedError()
+        # NOTE: Can't do append/extend because clusters
+        # share the same self.vertexes initially.
+        target.vertexes = target.vertexes + [
+            bl_vertex, tl_vertex, br_vertex, tr_vertex]
+        bl_idx = len(target.vertexes) - 1 - 1 - 1 - 1
+        tl_idx = len(target.vertexes) - 1 - 1 - 1
+        br_idx = len(target.vertexes) - 1 - 1
+        tr_idx = len(target.vertexes) - 1
+
+        # TODO: Figure out details of linedefs.
+        def make_linedef(vx_a, vx_b):
+            linedef = mapedit.Linedef(vx_a, vx_b)
+            linedef.impassable = True
+            return linedef
+
+        top_line = make_linedef(tl_idx, tr_idx)
+        bottom_line = make_linedef(br_idx, bl_idx)
+        left_line = make_linedef(bl_idx, tl_idx)
+        right_line = make_linedef(tr_idx, br_idx)
+        target.linedefs = target.linedefs + [
+            top_line, bottom_line, left_line, right_line]
+
+        target.enclosed = True
         return target
 
     def split(self, n_clusters, standardize=True, feature_indices=None, algorithm='kmeans'):
@@ -185,6 +204,7 @@ class MapEditorPreprocessor(mapedit.MapEditor):
 
     def append_to_wad(self, map_name):
         self.wad.maps[map_name] = self.to_lumps()
+        return self.wad
 
 
 def load_map_editors(wad_or_wad_file):
