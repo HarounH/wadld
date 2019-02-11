@@ -206,6 +206,28 @@ class MapEditorPreprocessor(mapedit.MapEditor):
         self.wad.maps[map_name] = self.to_lumps()
         return self.wad
 
+    def deduplicated(self, linedefs):
+        dedup_linedefs = []
+        i = 0
+        L = len(linedefs) - 1
+        while i < L:
+            # if linedefs[i] and linedefs[i + 1] are the same, then merge em
+            next_line = (copy.copy(linedefs[i]))
+            potential_match = linedefs[i + 1]
+            if (next_line.vx_a == potential_match.vx_b) and (next_line.vx_b == potential_match.vx_a):
+                next_line.back = potential_match.front
+                i += 1
+            i += 1
+            dedup_linedefs.append(next_line)
+        return dedup_linedefs
+
+    def to_lumps(self):
+        temp = self.linedefs
+        self.linedefs = self.deduplicated(temp)
+        answer = super(MapEditorPreprocessor, self).to_lumps()
+        self.linedefs = temp
+        return answer
+
 
 def load_map_editors(wad_or_wad_file):
     ''' Function to load map editors from wad (or filename)
