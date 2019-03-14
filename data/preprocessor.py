@@ -229,6 +229,29 @@ class MapEditorPreprocessor(mapedit.MapEditor):
         self.linedefs = temp
         return answer
 
+    def binarize(self, used_vxi=None):
+        '''
+            Convert this mapeditor into a numpy array of vertices and
+            an adjacency matrix.
+            @param: used_vxi: List of vertices to consider, also restricts which
+                edges are included. If None, then self.used_vxi are used
+        '''
+        if used_vxi is None:
+            used_vxi = self.used_vxi if self.used_vxi is not None else self.construct_vxi()
+
+        vertexes_idx2vxi_idx = [-1 for i in range(len(self.vertexes))]
+        for vxi_idx, vertexes_idx in enumerate(used_vxi):
+            vertexes_idx2vxi_idx[vertexes_idx] = vxi_idx
+
+        V = [[self.vertexes[i].x, self.vertexes[i].y] for i in used_vxi]
+        E = np.zeros((len(V), len(V)), np.float32)
+        for line in self.linedefs:
+            a = vertexes_idx2vxi_idx[line.vx_a]
+            b = vertexes_idx2vxi_idx[line.vx_b]
+            if a > 0 and b > 0:
+                E[a, b] = 1.0
+        V = np.array(V).astype(np.float32)
+        return V, E
 
 def load_map_editors(wad_or_wad_file):
     ''' Function to load map editors from wad (or filename)
