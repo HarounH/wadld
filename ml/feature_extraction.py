@@ -24,5 +24,5 @@ def feature_mat(vertexes, linedefs, vec_backs=False, standardize=True):
     mat = np.vstack(feature_vecs)
     if standardize:
         from sklearn.preprocessing import StandardScaler
-        return StandardScaler().fit_transform(mat)
+        return StandardScaler().fit_transform(mat.astype(np.float))
     return mat

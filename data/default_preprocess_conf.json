@@ -1,6 +1,6 @@
 {
   "preproc_type": "binarize",
-  "min_average_rating": 4.0,
+  "min_average_rating": 5.0,
   "min_votes": 3,
-  "nodes_per_graph": 75,
+  "nodes_per_graph": 75
 }
