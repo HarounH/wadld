@@ -4,6 +4,7 @@ DOOM WAD Level Designer, aka wadld (using ml)
 # Requirements
 - Python 3.7 (Anaconda), PyTorch 1.0, no backward compatibility guaranteed.
 - html5lib for parsing websites to get data (`pip install html5lib` to install it)
+- Install pandas, requests, and bs4.
 - omgifol for some WAD handling
 - OpenCV2 (`pip install opencv-python`)
 
