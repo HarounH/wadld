@@ -123,10 +123,13 @@ def get_all_reviews_from_query(url):
     # Takes in a URL that is IFRAME_REVIEW_BASE + "iframe_review.php?id={}".format(x)
     # Performs the query
     # Gets all reviews
-    review_soup = BeautifulSoup(requests.get(url).content, HTML_PARSER)
-    trs = review_soup.find_all("tr")
-    return get_all_reviews_from_trs(trs)
-
+    try:
+        review_soup = BeautifulSoup(requests.get(url).content, HTML_PARSER)
+        trs = review_soup.find_all("tr")
+        return get_all_reviews_from_trs(trs)
+    except:
+        print('Couldn\'t get reviews from {}'.format(url))
+        return []
 
 def get_metadata(soup):
     tr_tags = soup.find_all("tr")
@@ -181,11 +184,11 @@ def get_urls(args):
             print("Going through {}".format(current_url))
             if not(((args.limit < 0) or (len(wad_file_dict) < args.limit))):
                 break
-            current_page = requests.get(current_url, allow_redirects=True)
             try:
+                current_page = requests.get(current_url, allow_redirects=True)
                 current_soup = BeautifulSoup(current_page.text, HTML_PARSER)
             except:
-                print("Page at {} couldn't be souped. Skipping.".format(current_url))
+                print("Page at {} couldn't be downloaded/souped. Skipping.".format(current_url))
                 continue
             anchors = current_soup.find_all('a')
             # if "0-9" in current_url:

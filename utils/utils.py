@@ -43,6 +43,8 @@ def draw_binary_lines(V, E, boundary=100, color=(255, 255, 255), thickness=8):
         vx_b = tuple(V[Ebi[ei]].tolist())
         cv2.line(arr, vx_a, vx_b, color, thickness=thickness)
     return arr
+
+
 class Metadata:
     """
     Simple wrapper around a dict.
