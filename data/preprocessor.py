@@ -248,6 +248,7 @@ class MapEditorPreprocessor(mapedit.MapEditor):
         for line in self.linedefs:
             a = vertexes_idx2vxi_idx[line.vx_a]
             b = vertexes_idx2vxi_idx[line.vx_b]
+            # NOTE Not making it symmetric because linedefs are one directional
             if a > 0 and b > 0:
                 E[a, b] = 1.0
         V = np.array(V).astype(np.float32)

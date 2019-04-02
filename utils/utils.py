@@ -4,6 +4,10 @@ import seaborn
 seaborn.reset_orig()
 
 
+def periodic_integer_delta(inp, every=10, start=-1):
+    return (inp % every) == ((start + every) % every)
+
+
 def get_color_palette(n, name='husl'):
     ''' Returns a palette of `n` colors
     @params n (int): number of colors
