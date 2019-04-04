@@ -78,10 +78,7 @@ def test(args, model, loader, prefix='', verbose=True):
             eos_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
             adj_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
             pos_loss = F.mse_loss(G_tp1_pred, G_tp1)
-            loss = adj_loss + pos_loss
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            loss = eos_loss + adj_loss + pos_loss
             metrics['eos_loss'].append(eos_loss.item())
             metrics['adj_loss'].append(adj_loss.item())
             metrics['pos_loss'].append(pos_loss.item())
@@ -101,7 +98,7 @@ def test(args, model, loader, prefix='', verbose=True):
 
 
 def train_skeletal_model(args, dataset, train_loader, test_loader):
-    output_dir = os.path.join(args.base_output, args.run_code)
+    output_dir = os.path.join(args.base_output)
     model = construct_model(args, dataset)  # TODO
     params = list(model.parameters())
     optimizer = optim.Adam(
