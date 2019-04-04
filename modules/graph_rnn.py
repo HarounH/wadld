@@ -7,7 +7,9 @@ from torch.nn.utils import (
     weight_norm,
     spectral_norm,
 )
-
+from torch.nn.utils import (
+    rnn,
+)
 
 class GraphRNN(nn.Module):
     def __init__(
@@ -18,7 +20,7 @@ class GraphRNN(nn.Module):
             max_vertex_num=400,
             rnn_hidden_size=32,
             rnn_num_layers=1,
-            batch_first=True,
+            batch_first=False,
             rnn_dropout=0,
             ):
         super().__init__()
@@ -46,7 +48,7 @@ class GraphRNN(nn.Module):
         self.continuous_feature_net = nn.Sequential(
             nn.Linear(rnn_hidden_size, rnn_hidden_size),
             nn.Tanh(),
-            nn.Linear(rnn_hidden_size, discrete_feature_dim),
+            nn.Linear(rnn_hidden_size, continuous_feature_dim),
         )
         self.adjacency_feature_net = nn.Sequential(
             nn.Linear(rnn_hidden_size, rnn_hidden_size),
@@ -56,4 +58,16 @@ class GraphRNN(nn.Module):
 
     def forward(self, G_t, *args):
         h, _ = self.theta_net(G_t, *args)
-        return self.discrete_feature_net(h), self.continuous_feature_net(h), self.adjacency_feature_net(h)
+        discrete_features = rnn.PackedSequence(
+            self.discrete_feature_net(h.data),
+            h.batch_sizes
+        )
+        continuous_features = rnn.PackedSequence(
+            self.continuous_feature_net(h.data),
+            h.batch_sizes
+        )
+        adjacencies = rnn.PackedSequence(
+            self.adjacency_feature_net(h.data),
+            h.batch_sizes
+        )
+        return discrete_features, continuous_features, adjacencies

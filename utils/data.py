@@ -3,13 +3,13 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pack_sequence
 import pickle
-np.set_printoptions(threshold=np.inf)
+# np.set_printoptions(threshold=np.inf)
 
 
 class WaddleDataset(Dataset):
     '''Waddle dataset.'''
 
-    def __init__(self, pkl_file):
+    def __init__(self, pkl_file, min_number_of_nodes=10):
         '''
         @param: pkl_file: the path to the binarized waddle data.
         '''
@@ -26,6 +26,9 @@ class WaddleDataset(Dataset):
         for idx in range(len(self.data['E'])):
             d = len(self.data['E'][idx])
 
+            if d < min_number_of_nodes:
+                continue
+
             padded = np.zeros((mx, d))
             padded[:d, :] = self.data['E'][idx]
 
@@ -35,14 +38,14 @@ class WaddleDataset(Dataset):
             # stack coordinates on top
             # stack a vector [0, ..., 1] on top of that
             seq = np.vstack((eos, self.data['V'][idx].T, padded))
-            self.preprocessed.append(seq)
+            self.preprocessed.append(seq.astype(np.float32))
         self.n = len(self.preprocessed)
 
     def __len__(self):
         return self.n
 
     def __getitem__(self, idx):
-        return self.preprocessed[idx], self.preprocessed[idx]
+        return self.preprocessed[idx].T, self.preprocessed[idx].T
 
 
 class PackCollate:

@@ -126,10 +126,10 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         epoch_metrics = defaultdict(list)
         tic = time.time()
         for bidx, (G_t, G_tp1) in enumerate(train_loader):
-            import pdb; pdb.set_trace()
-            G_t.to(args.device)
+            G_t = G_t.to(args.device)
             # TODO Move stuff to device
             G_tp1_pred = model(G_t)
+            raise NotImplementedError('Loss functions not defined')
             # TODO Figure out how to compute the individual losses
             eos_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
             adj_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
@@ -180,7 +180,7 @@ def get_dataloaders(dataset, batch_size, test_frac):
         batch_size=batch_size,
         shuffle=True,
         collate_fn=PackCollate(),
-        num_workers=multiprocessing.cpu_count() // 4)
+        num_workers=0)  # multiprocessing.cpu_count() // 4)
     test_loader = None  # TODO
     return train_loader, test_loader
 
