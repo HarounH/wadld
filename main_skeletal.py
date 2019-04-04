@@ -7,18 +7,24 @@ Deals with skeletal structure of maps, i.e., vertex positions and adjacency.
 import os
 import sys
 import time
+import multiprocessing
 import numpy as np
 import pandas as pd
 import pickle
 import argparse
+from collections import defaultdict
 import torch
 from torch import nn
 import torch.functional as F
-from data.dataset import (
-    get_dataset,
-    get_dataloaders,
+from torch import optim
+from torch.utils.data import DataLoader
+from utils.data import (
+    PackCollate,
+    WaddleDataset,
 )
-
+from modules import (
+    graph_rnn,
+)
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -99,7 +105,15 @@ def test(args, model, loader, prefix='', verbose=True):
 
 def train_skeletal_model(args, dataset, train_loader, test_loader):
     output_dir = os.path.join(args.base_output)
-    model = construct_model(args, dataset)  # TODO
+    model = graph_rnn.GraphRNN(
+        discrete_feature_dim=dataset.discrete_feature_dim,
+        continuous_feature_dim=dataset.continuous_feature_dim,
+        max_vertex_num=dataset.max_vertex_num,
+    )
+    model = model.to(args.device)
+    if args.dataparallel:
+        raise NotImplementedError('Check if nn.DataParallel works with RNN')
+
     params = list(model.parameters())
     optimizer = optim.Adam(
         params,
@@ -107,11 +121,13 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         weight_decay=args.weight_decay
     )
     metrics = defaultdict(list)
-    for epoch_idx in args.epochs:
+    for epoch_idx in range(args.epochs):
         print('Starting epoch {}'.format(epoch_idx))
         epoch_metrics = defaultdict(list)
         tic = time.time()
         for bidx, (G_t, G_tp1) in enumerate(train_loader):
+            import pdb; pdb.set_trace()
+            G_t.to(args.device)
             # TODO Move stuff to device
             G_tp1_pred = model(G_t)
             # TODO Figure out how to compute the individual losses
@@ -152,9 +168,30 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
     return model, metrics
 
 
+def get_dataloaders(dataset, batch_size, test_frac):
+    print('WARNING: get_dataloaders not fully implemented - create test_loader')
+    print('WARNING: get_dataloaders not fully implemented - create test_loader')
+    print('WARNING: get_dataloaders not fully implemented - create test_loader')
+    print('WARNING: get_dataloaders not fully implemented - create test_loader')
+    print('WARNING: get_dataloaders not fully implemented - create test_loader')
+    print('WARNING: get_dataloaders not fully implemented - create test_loader')
+    train_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=PackCollate(),
+        num_workers=multiprocessing.cpu_count() // 4)
+    test_loader = None  # TODO
+    return train_loader, test_loader
+
+
 def run_skeletal(args):
-    dataset = get_dataset(args.data_path, debug=args.debug)
-    train_loader, test_loader = get_dataloaders(dataset, args.test_frac)
+    tic = time.time()
+    dataset = WaddleDataset(args.data_path)
+    print('[{:.2f}] Created dataset'.format(time.time() - tic))
+    if args.debug:
+        dataset.n = 40
+    train_loader, test_loader = get_dataloaders(dataset, args.batch_size, args.test_frac)  # noqa
     model, metrics = train_skeletal_model(args, dataset, train_loader, test_loader)
     return model, metrics
 

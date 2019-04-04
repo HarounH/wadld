@@ -16,8 +16,8 @@ class GraphRNN(nn.Module):
             discrete_feature_dim=1,
             continuous_feature_dim=2,
             max_vertex_num=400,
-            rnn_hidden_size=64,
-            rnn_num_layers=5,
+            rnn_hidden_size=32,
+            rnn_num_layers=1,
             batch_first=True,
             rnn_dropout=0,
             ):
@@ -36,7 +36,7 @@ class GraphRNN(nn.Module):
             rnn_num_layers,
             batch_first=batch_first,
             dropout=rnn_dropout,
-            )
+        )
 
         self.discrete_feature_net = nn.Sequential(
             nn.Linear(rnn_hidden_size, rnn_hidden_size),
