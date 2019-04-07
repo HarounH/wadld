@@ -26,6 +26,7 @@ from modules import (
     graph_rnn,
 )
 
+
 def get_args():
     parser = argparse.ArgumentParser()
 
@@ -78,13 +79,15 @@ def test(args, model, loader, prefix='', verbose=True):
     replace_field_by_mean = ['eos_loss', 'adj_loss', 'pos_loss', 'loss']
     with torch.no_grad():
         for bidx, (G_t, G_tp1) in enumerate(loader):
-            # TODO Move stuff to device
-            G_tp1_pred = model(G_t)
-            # TODO Figure out how to compute the individual losses
-            eos_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
-            adj_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
-            pos_loss = F.mse_loss(G_tp1_pred, G_tp1)
+            G_t = G_t.to(args.device)
+            G_tp1 = G_tp1.to(args.device)
+
+            discrete_hat, continuous_hat, adj_hat = model(G_t)
+            eos_loss = F.binary_cross_entropy_with_logits(discrete_hat, G_tp1[:, :dataset.discrete_feature_dim])
+            adj_loss = F.binary_cross_entropy_with_logits(adj_loss, G_tp1[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):])
+            pos_loss = F.mse_loss(discrete_hat, G_tp1[:, dataset.discrete_feature_dim:dataset.continuous_feature_dim])
             loss = eos_loss + adj_loss + pos_loss
+
             metrics['eos_loss'].append(eos_loss.item())
             metrics['adj_loss'].append(adj_loss.item())
             metrics['pos_loss'].append(pos_loss.item())
@@ -127,17 +130,19 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         tic = time.time()
         for bidx, (G_t, G_tp1) in enumerate(train_loader):
             G_t = G_t.to(args.device)
-            # TODO Move stuff to device
-            G_tp1_pred = model(G_t)
-            raise NotImplementedError('Loss functions not defined')
-            # TODO Figure out how to compute the individual losses
-            eos_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
-            adj_loss = F.binary_cross_entropy_with_logits(G_tp1_pred, G_tp1)
-            pos_loss = F.mse_loss(G_tp1_pred, G_tp1)
+            G_tp1 = G_tp1.to(args.device)
+
+            discrete_hat, continuous_hat, adj_hat = model(G_t)
+
+            eos_loss = F.binary_cross_entropy_with_logits(discrete_hat, G_tp1[:, :dataset.discrete_feature_dim])
+            adj_loss = F.binary_cross_entropy_with_logits(adj_loss, G_tp1[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):])
+            pos_loss = F.mse_loss(discrete_hat, G_tp1[:, dataset.discrete_feature_dim:dataset.continuous_feature_dim])
             loss = eos_loss + adj_loss + pos_loss
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
             epoch_metrics['eos_loss'].append(eos_loss.item())
             epoch_metrics['adj_loss'].append(adj_loss.item())
             epoch_metrics['pos_loss'].append(pos_loss.item())
