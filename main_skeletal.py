@@ -24,6 +24,7 @@ from utils.data import (
 )
 from modules import (
     graph_rnn,
+    loss,
 )
 
 
@@ -82,10 +83,8 @@ def test(args, model, loader, prefix='', verbose=True):
             G_t = G_t.to(args.device)
             G_tp1 = G_tp1.to(args.device)
 
-            discrete_hat, continuous_hat, adj_hat = model(G_t)
-            eos_loss = F.binary_cross_entropy_with_logits(discrete_hat, G_tp1[:, :dataset.discrete_feature_dim])
-            adj_loss = F.binary_cross_entropy_with_logits(adj_loss, G_tp1[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):])
-            pos_loss = F.mse_loss(discrete_hat, G_tp1[:, dataset.discrete_feature_dim:dataset.continuous_feature_dim])
+            discrete_hat, continuous_hat, adj_hat = G_tp1_hat = model(G_t)
+            eos_loss, adj_loss, pos_loss = loss.skeletal_losses(G_tp1_hat, G_tp1, dataset)
             loss = eos_loss + adj_loss + pos_loss
 
             metrics['eos_loss'].append(eos_loss.item())
@@ -132,11 +131,8 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
             G_t = G_t.to(args.device)
             G_tp1 = G_tp1.to(args.device)
 
-            discrete_hat, continuous_hat, adj_hat = model(G_t)
-
-            eos_loss = F.binary_cross_entropy_with_logits(discrete_hat, G_tp1[:, :dataset.discrete_feature_dim])
-            adj_loss = F.binary_cross_entropy_with_logits(adj_loss, G_tp1[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):])
-            pos_loss = F.mse_loss(discrete_hat, G_tp1[:, dataset.discrete_feature_dim:dataset.continuous_feature_dim])
+            discrete_hat, continuous_hat, adj_hat = G_tp1_hat = model(G_t)
+            eos_loss, adj_loss, pos_loss = loss.skeletal_losses(G_tp1_hat, G_tp1, dataset)
             loss = eos_loss + adj_loss + pos_loss
 
             optimizer.zero_grad()
