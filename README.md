@@ -20,3 +20,8 @@ followed by `sh manual_fix.sh` (hit `y` or `A` whenever prompted) followed by `p
 
 ## WAD Parser
 We could use https://github.com/devinacker/omgifol
+
+
+## Training
+`python -m main_skeletal [path to binarized.pkl]`
+Do `python -m main_skeletal -h` for doc on settings. `--cuda` is probably useful.
