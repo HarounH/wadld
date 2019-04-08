@@ -3,22 +3,21 @@ from torch import nn
 import torch.functional as F
 
 
+bce_logits_fn = nn.BCEWithLogitsLoss(reduction='none')
+mse_loss_fn = nn.MSELoss(reduction='none')
 def skeletal_losses(prediction, target, dataset):
     eos_hat, continuous_hat, adj_hat = prediction
-    eos = target[:, 0].view(-1, 1)
-    eos_loss = F.binary_cross_entropy_with_logits(
-        discrete_hat,
-        target[:, :dataset.discrete_feature_dim],
-        reduction='none',
+    eos = target.data[:, 0].view(-1, 1)
+    eos_loss = bce_logits_fn(
+        eos_hat.data,
+        target.data[:, :dataset.discrete_feature_dim],
     )
-    adj_loss = eos * F.binary_cross_entropy_with_logits(
-        adj_loss,
-        target[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):],
-        reduction='none',
+    adj_loss = eos * bce_logits_fn(
+        adj_hat.data,
+        target.data[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):],
     )
-    pos_loss = eos * F.mse_loss(
-        discrete_hat,
-        target[:, dataset.discrete_feature_dim:dataset.continuous_feature_dim],
-        reduction='none',
+    pos_loss = eos * mse_loss_fn(
+        continuous_hat.data,
+        target.data[:, dataset.discrete_feature_dim:dataset.continuous_feature_dim],
     )
-    return eos_loss, pos_loss, adj_loss
+    return eos_loss.mean(), pos_loss.mean(), adj_loss.mean()

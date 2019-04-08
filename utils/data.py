@@ -9,7 +9,7 @@ import pickle
 class WaddleDataset(Dataset):
     '''Waddle dataset.'''
 
-    def __init__(self, pkl_file, min_number_of_nodes=10):
+    def __init__(self, pkl_file, min_number_of_nodes=10, standardize_positions=True):
         '''
         @param: pkl_file: the path to the binarized waddle data.
         '''
@@ -37,15 +37,26 @@ class WaddleDataset(Dataset):
 
             # stack coordinates on top
             # stack a vector [0, ..., 1] on top of that
-            seq = np.vstack((eos, self.data['V'][idx].T, padded))
+            points = self.data['V'][idx]
+            if standardize_positions:
+                points = (points - points.mean(0)) / (points.std(0) + 1e-8)
+            seq = np.vstack((eos, points.T, padded))
             self.preprocessed.append(seq.astype(np.float32))
         self.n = len(self.preprocessed)
+
+        assert self.n > 0, "No datapoints."
+
+        # Use shape[0] because preprocessed arrays are transposed.
+        self.end_token = np.zeros((1, self.preprocessed[0].shape[0]), dtype=np.float32)
+        self.end_token[0, 0] = 1.0
 
     def __len__(self):
         return self.n
 
     def __getitem__(self, idx):
-        return self.preprocessed[idx].T, self.preprocessed[idx].T
+        inp = self.preprocessed[idx].T
+        out = np.concatenate([inp[:-1, :], self.end_token], axis=0)
+        return inp, out
 
 
 class PackCollate:
@@ -54,12 +65,13 @@ class PackCollate:
     def __call__(self, batch):
         '''For a given batch we pack the sequences of adjacencies and get there lengths. '''
         sorted_batch = sorted(batch, key=lambda x: x[0].shape[0], reverse=True)
-
-        adj_seqs = [torch.from_numpy(x[1]) for x in sorted_batch]
-        lengths = torch.LongTensor([len(x) for x in adj_seqs])
-        adj_seqs_packed = pack_sequence(adj_seqs)
-
-        return adj_seqs_packed, lengths
+        rets = []
+        for i in range(len(sorted_batch[0])):
+            adj_seqs = [torch.from_numpy(x[i]) for x in sorted_batch]
+            lengths = torch.LongTensor([len(x) for x in adj_seqs])
+            adj_seqs_packed = pack_sequence(adj_seqs)
+            rets.append(adj_seqs_packed)
+        return rets
 
 
 if __name__ == "__main__":

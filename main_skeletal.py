@@ -17,15 +17,21 @@ import torch
 from torch import nn
 import torch.functional as F
 from torch import optim
-from torch.utils.data import DataLoader
+from torch.utils.data import (
+    DataLoader,
+    SubsetRandomSampler,
+)
 from utils.data import (
     PackCollate,
     WaddleDataset,
 )
 from modules import (
     graph_rnn,
-    loss,
 )
+from modules.loss import (
+    skeletal_losses,
+)
+from utils import utils
 
 
 def get_args():
@@ -75,7 +81,7 @@ def get_args():
     return args
 
 
-def test(args, model, loader, prefix='', verbose=True):
+def test(args, dataset, model, loader, prefix='', verbose=True):
     metrics = defaultdict(list)
     replace_field_by_mean = ['eos_loss', 'adj_loss', 'pos_loss', 'loss']
     with torch.no_grad():
@@ -84,7 +90,7 @@ def test(args, model, loader, prefix='', verbose=True):
             G_tp1 = G_tp1.to(args.device)
 
             discrete_hat, continuous_hat, adj_hat = G_tp1_hat = model(G_t)
-            eos_loss, adj_loss, pos_loss = loss.skeletal_losses(G_tp1_hat, G_tp1, dataset)
+            eos_loss, adj_loss, pos_loss = skeletal_losses(G_tp1_hat, G_tp1, dataset)
             loss = eos_loss + adj_loss + pos_loss
 
             metrics['eos_loss'].append(eos_loss.item())
@@ -130,9 +136,8 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         for bidx, (G_t, G_tp1) in enumerate(train_loader):
             G_t = G_t.to(args.device)
             G_tp1 = G_tp1.to(args.device)
-
             discrete_hat, continuous_hat, adj_hat = G_tp1_hat = model(G_t)
-            eos_loss, adj_loss, pos_loss = loss.skeletal_losses(G_tp1_hat, G_tp1, dataset)
+            eos_loss, adj_loss, pos_loss = skeletal_losses(G_tp1_hat, G_tp1, dataset)
             loss = eos_loss + adj_loss + pos_loss
 
             optimizer.zero_grad()
@@ -143,46 +148,48 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
             epoch_metrics['adj_loss'].append(adj_loss.item())
             epoch_metrics['pos_loss'].append(pos_loss.item())
             epoch_metrics['loss'].append(loss.item())
-
+        metrics['eos_loss'].append(np.mean(epoch_metrics['eos_loss']))
         metrics['adj_loss'].append(np.mean(epoch_metrics['adj_loss']))
         metrics['pos_loss'].append(np.mean(epoch_metrics['pos_loss']))
         metrics['loss'].append(np.mean(epoch_metrics['loss']))
-        print('[{:.2f}s] Epoch {}: losses={:.3f}, {:.3f}, {:.3f}'.format(
+        print('[{:.2f}s] Epoch {}: losses={:.3f} eos, {:.3f} adj, {:.3f} pos = {:.3f} total'.format(
             time.time() - tic,
             epoch_idx,
-            metrics['adj_loss'],
-            metrics['pos_loss'],
-            metrics['loss'],
+            metrics['eos_loss'][epoch_idx],
+            metrics['adj_loss'][epoch_idx],
+            metrics['pos_loss'][epoch_idx],
+            metrics['loss'][epoch_idx],
             ))
 
         # Eval and save if necessary.
         if utils.periodic_integer_delta(epoch_idx, args.eval_every):
-            test_metrics = test(args, model, test_loader, prefix='Test Dataset, Epoch {}'.format(epoch_idx))
+            test_metrics = test(args, dataset, model, test_loader, prefix='Test Dataset, Epoch {}'.format(epoch_idx))
             for k, v in test_metrics.items():
                 metrics['test_{}_epoch{}'.format(k, epoch_idx)] = v
 
         if utils.periodic_integer_delta(epoch_idx, args.save_every):
             checkpoint_path = os.path.join(output_dir, "last.checkpoint")
             print('Saving model to {}'.format(checkpoint_path))
-            chk = utils.make_checkpoint(model, optimizer, epoch)
+            chk = utils.make_checkpoint(model, optimizer, epoch_idx)
             torch.save(chk, checkpoint_path)
     return model, metrics
 
 
-def get_dataloaders(dataset, batch_size, test_frac):
-    print('WARNING: get_dataloaders not fully implemented - create test_loader')
-    print('WARNING: get_dataloaders not fully implemented - create test_loader')
-    print('WARNING: get_dataloaders not fully implemented - create test_loader')
-    print('WARNING: get_dataloaders not fully implemented - create test_loader')
-    print('WARNING: get_dataloaders not fully implemented - create test_loader')
-    print('WARNING: get_dataloaders not fully implemented - create test_loader')
+def get_dataloaders(args, dataset, batch_size, test_frac):
+    indices = np.random.permutation(list(range(len(dataset))))
+    split_point = int(args.test_frac * len(indices))
     train_loader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=True,
+        sampler=SubsetRandomSampler(indices[split_point:]),
         collate_fn=PackCollate(),
-        num_workers=0)  # multiprocessing.cpu_count() // 4)
-    test_loader = None  # TODO
+        num_workers=multiprocessing.cpu_count() // 4)
+    test_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        sampler=SubsetRandomSampler(indices[:split_point]),
+        collate_fn=PackCollate(),
+        num_workers=multiprocessing.cpu_count() // 4)
     return train_loader, test_loader
 
 
@@ -192,7 +199,7 @@ def run_skeletal(args):
     print('[{:.2f}] Created dataset'.format(time.time() - tic))
     if args.debug:
         dataset.n = 40
-    train_loader, test_loader = get_dataloaders(dataset, args.batch_size, args.test_frac)  # noqa
+    train_loader, test_loader = get_dataloaders(args, dataset, args.batch_size, args.test_frac)  # noqa
     model, metrics = train_skeletal_model(args, dataset, train_loader, test_loader)
     return model, metrics
 
