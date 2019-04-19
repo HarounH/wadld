@@ -80,3 +80,5 @@ if __name__ == "__main__":
     for adj, lengths in dl:
         print("{}\t{}".format(type(adj), lengths))
         break
+
+
