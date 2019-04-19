@@ -14,9 +14,16 @@ model = graph_rnn.GraphRNN(
     max_vertex_num=dataset.max_vertex_num,
 )
 
-checkpoint_path = "wadld/outputs/multi_run/last.checkpoint"
+checkpoint_path = "wadld/outputs/multi_run/run2/last.checkpoint"
 checkpoint = torch.load(checkpoint_path)
-model.load_state_dict(checkpoint['model_state_dict'])
+model.load_state_dict(checkpoint['model'])
 model.eval()
+max_vertices = 50
 
+hidden = torch.randint(ntokens, (1, 1), dtype=torch.long).to(device)
+
+with torch.no_grad():
+    for i in range(max_vertices):
+        discrete_features, continuous_features, adjacencies = model(G_t, hidden)
+        hidden = model.hidden
 

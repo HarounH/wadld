@@ -55,9 +55,13 @@ class GraphRNN(nn.Module):
             nn.Tanh(),
             nn.Linear(rnn_hidden_size, max_vertex_num),
         )
+    
+    @property
+    def hidden():
+        return self.hidden
 
     def forward(self, G_t, *args):
-        h, _ = self.theta_net(G_t, *args)
+        h, self.hidden = self.theta_net(G_t, *args)
         discrete_features = rnn.PackedSequence(
             self.discrete_feature_net(h.data),
             h.batch_sizes
@@ -71,3 +75,4 @@ class GraphRNN(nn.Module):
             h.batch_sizes
         )
         return discrete_features, continuous_features, adjacencies
+
