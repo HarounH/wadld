@@ -20,7 +20,7 @@ class GraphRNN(nn.Module):
             max_vertex_num=400,
             rnn_hidden_size=32,
             rnn_num_layers=1,
-            batch_first=False,
+            batch_first=True,
             rnn_dropout=0,
             ):
         super().__init__()
