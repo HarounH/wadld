@@ -68,9 +68,11 @@ with torch.no_grad():
 
         G_t = rnn.PackedSequence(G_t, torch.tensor([1], dtype=torch.long))
 
-D = np.concatenate(graph, axis=0)
+D = np.concatenate(graph, axis=0).T
 
-coords = D[:, 1:3]*10000
+print(D.shape)
+coords = D[1:3, :]*10000
+print(coords.shape)
 coords = coords.astype(int)
 
 import networkx as nx
@@ -78,18 +80,28 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
-adj_mat = D[:, 3:]
+if False:
+    D = np.zeros((6,3))
+    D[3, 1] = 1
+    D[3, 2] = 1
+    D[4, 2] = 1
+
+    coords = [np.array([0, 0]), np.array([10, 10]), np.array([10, 0])]
+
+adj_mat = D[3:, :]
 connections = np.where(adj_mat>0)
 edges = [(s, d) for s, d in zip(connections[0], connections[1])]
 
 graph = nx.Graph()
-
-for node in range(len(coords)):
-    graph.add_node(node)
+print(coords)
+for node, coord in enumerate(coords.T):
+    graph.add_node(node, pos=(coord[0], coord[1]))
 
 graph.add_edges_from(edges)
-pos = [(x,y) for x,y in coords]
-nx.draw(graph, pos, node_size=1500, node_color='yellow', font_size=8, font_weight='bold')
-graph_name = str(len(coords))+"nodes____"+str(len(edges))+"edges.png"
+pos = nx.get_node_attributes(graph, 'pos')
+print(pos)
+print(edges)
+nx.draw(graph, pos, node_size=50, node_color='blue', font_size=8, font_weight='bold')
+graph_name = "pngs/"+str(len(coords.T))+"nodes____"+str(len(edges))+"edges.png"
 plt.savefig(graph_name, format="PNG")
 

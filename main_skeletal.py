@@ -118,6 +118,7 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         continuous_feature_dim=dataset.continuous_feature_dim,
         max_vertex_num=dataset.max_vertex_num,
     )
+
     model = model.to(args.device)
     if args.dataparallel:
         raise NotImplementedError('Check if nn.DataParallel works with RNN')
@@ -128,6 +129,7 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         lr=args.lr,
         weight_decay=args.weight_decay
     )
+
     metrics = defaultdict(list)
     for epoch_idx in range(args.epochs):
         print('Starting epoch {}'.format(epoch_idx))
