@@ -22,7 +22,6 @@ class WaddleDataset(Dataset):
         self.continuous_feature_dim = self.data['V'][0].shape[1]  # X and Y
 
         self.preprocessed = []
-
         for idx in range(len(self.data['E'])):
             d = len(self.data['E'][idx])
 

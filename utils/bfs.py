@@ -11,43 +11,7 @@ from scipy.sparse import csr_matrix
 np.set_printoptions(threshold=np.inf)
 
 pkl_file = "data/preprocessed_data/binarized.pkl"
-out_file = "data/preprocessed_data/test.pkl"
 data = pickle.load(open(pkl_file, "rb"))
-
-import networkx as nx
-import matplotlib
-matplotlib.use('agg')
-import matplotlib.pyplot as plt
-
-from torch.utils.data import (
-    DataLoader,
-    SubsetRandomSampler,
-)
-
-from data import (
-    PackCollate,
-    WaddleDataset,
-)
-
-# every map, log(|V|) permutations
-def render(adj, graph_name):
-    D = adj.data.numpy().T
-    coords = D[1:3, :]
-
-    coords = coords.astype(int)
-
-    adj_mat = D[3:, :]
-    connections = np.where(adj_mat>0)
-    edges = [(s, d) for s, d in zip(connections[0], connections[1])]
-    graph = nx.Graph()
-    for node, coord in enumerate(coords.T):
-        graph.add_node(node, pos=(coord[0], coord[1]))
-    graph.add_edges_from(edges)
-    pos = nx.get_node_attributes(graph, 'pos')
-    nx.draw(graph, pos, node_size=1, node_color='blue', font_size=8, font_weight='bold')
-
-    print("saving " + graph_name)
-    plt.savefig(graph_name, format="PNG")
 
 perm_data = {'E':[], 'V':[]}
 for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
@@ -89,33 +53,11 @@ for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
                 
             n.extend(children)
             q.extend(children)
-        d = np.triu(adj_mat.T[perm[q]][:, perm[q]].T)
+        d = np.triu(adj_mat.T[bft_perm[q]][:, bft_perm[q]].T)
         np.fill_diagonal(d, 0)
         perm_data['E'].append(d)
         perm_data['V'].append(coords[bft_perm[q]])
     break
 
-dataset = WaddleDataset(pkl_file, standardize_positions=False)
-
-loader = DataLoader(
-        dataset,
-        batch_size=1,
-        collate_fn=PackCollate())
-
-for i, (adj, lengths) in enumerate(loader):
-    render(adj, "orig")
-    break
-
-
 pickle.dump(perm_data, open(out_file, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-dataset = WaddleDataset(out_file, standardize_positions=False)
-
-loader = DataLoader(
-        dataset,
-        batch_size=1,
-        collate_fn=PackCollate())
-
-for i, (adj, lengths) in enumerate(loader):
-    render(adj, str(i))
 
