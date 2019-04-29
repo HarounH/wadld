@@ -9,7 +9,7 @@ import pickle
 class WaddleDataset(Dataset):
     '''Waddle dataset.'''
 
-    def __init__(self, pkl_file, min_number_of_nodes=10, standardize_positions=True):
+    def __init__(self, pkl_file, min_number_of_nodes=10, standardize_positions=True, return_mask=False):
         '''
         @param: pkl_file: the path to the binarized waddle data.
         '''
@@ -32,14 +32,13 @@ class WaddleDataset(Dataset):
             padded[:d, :] = self.data['E'][idx]
 
             eos = np.zeros(d)
-            eos[-1] = 1
 
             # stack coordinates on top
             # stack a vector [0, ..., 1] on top of that
             points = self.data['V'][idx]
             if standardize_positions:
                 points = (points - points.mean(0)) / (points.std(0) + 1e-8)
-            seq = np.vstack((eos, points.T, padded))
+            seq = np.vstack((eos, points.T, padded))  # (3 + mx, d)
             self.preprocessed.append(seq.astype(np.float32))
         self.n = len(self.preprocessed)
 
@@ -48,13 +47,26 @@ class WaddleDataset(Dataset):
         # Use shape[0] because preprocessed arrays are transposed.
         self.end_token = np.zeros((1, self.preprocessed[0].shape[0]), dtype=np.float32)
         self.end_token[0, 0] = 1.0
+        self.return_mask = return_mask
 
     def __len__(self):
         return self.n
 
     def __getitem__(self, idx):
-        inp = self.preprocessed[idx].T
-        out = np.concatenate([inp[:-1, :], self.end_token], axis=0)
+        inp = self.preprocessed[idx].T  # (d, 3 + mx)
+        out = np.concatenate([
+            inp[:-1, :],  # d - 1, 3 + mx
+            self.end_token  # 1, 3 + mx
+        ], axis=0)  # d, 3 + mx
+        if return_mask:
+            # TODO : Generate mask
+            mask = np.tril(
+                np.ones(
+                    inp.shape[0],  # d
+                    inp.shape[1] - (self.discrete_feature_dim + self.continuous_feature_dim)  # mx
+                    )
+                )
+            return inp, out, mask
         return inp, out
 
 
@@ -79,5 +91,3 @@ if __name__ == "__main__":
     for adj, lengths in dl:
         print("{}\t{}".format(type(adj), lengths))
         break
-
-

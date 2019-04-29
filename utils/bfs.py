@@ -13,7 +13,7 @@ np.set_printoptions(threshold=np.inf)
 pkl_file = "data/preprocessed_data/binarized.pkl"
 data = pickle.load(open(pkl_file, "rb"))
 
-perm_data = {'E':[], 'V':[]}
+perm_data = {'E': [], 'V': []}
 for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
     if ct % 1000 == 0:
         print("Created {} map permutations".format(ct))
@@ -21,14 +21,14 @@ for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
 
     M = pi.T + pi
     adj_mat = np.zeros(M.shape)
-    adj_mat[np.where(M>0)] = 1
+    adj_mat[np.where(M > 0)] = 1
     dims = [i for i in range(adj_mat.shape[0])]
     perms = set()
 
     while len(perms) < num_perms:
         perms.add(np.random.permutation(dims).tostring())
 
-    bfts = []    
+    bfts = []
     for perm in perms:
         perm = np.frombuffer(perm, dtype=np.int)
         p_adj_mat = adj_mat[list(perm)][:, list(perm)]
@@ -46,11 +46,11 @@ for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
         while len(n) > 0:
             v = n.pop(0)
             children = np.nonzero(bft_mat.astype(int).T[:, v])[0]
-            
+
             if not children.tolist() and len(q) < bft_mat.shape[0] and not n:
                 q_set = set(q)
                 children = [[idx for idx in range(bft_mat.shape[0]) if idx not in q_set][0]]
-                
+
             n.extend(children)
             q.extend(children)
         d = np.triu(adj_mat.T[bft_perm[q]][:, bft_perm[q]].T)
@@ -60,4 +60,3 @@ for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
     break
 
 pickle.dump(perm_data, open(out_file, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-

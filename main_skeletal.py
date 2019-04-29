@@ -85,12 +85,12 @@ def test(args, dataset, model, loader, prefix='', verbose=True):
     metrics = defaultdict(list)
     replace_field_by_mean = ['eos_loss', 'adj_loss', 'pos_loss', 'loss']
     with torch.no_grad():
-        for bidx, (G_t, G_tp1) in enumerate(loader):
+        for bidx, (G_t, G_tp1, mask) in enumerate(loader):
             G_t = G_t.to(args.device)
             G_tp1 = G_tp1.to(args.device)
 
             discrete_hat, continuous_hat, adj_hat = G_tp1_hat = model(G_t)
-            eos_loss, adj_loss, pos_loss = skeletal_losses(G_tp1_hat, G_tp1, dataset)
+            eos_loss, adj_loss, pos_loss = skeletal_losses(G_tp1_hat, G_tp1, dataset, mask)
             loss = eos_loss + adj_loss + pos_loss
 
             metrics['eos_loss'].append(eos_loss.item())
@@ -135,11 +135,11 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         print('Starting epoch {}'.format(epoch_idx))
         epoch_metrics = defaultdict(list)
         tic = time.time()
-        for bidx, (G_t, G_tp1) in enumerate(train_loader):
+        for bidx, (G_t, G_tp1, mask) in enumerate(train_loader):
             G_t = G_t.to(args.device)
             G_tp1 = G_tp1.to(args.device)
             discrete_hat, continuous_hat, adj_hat = G_tp1_hat = model(G_t)
-            eos_loss, adj_loss, pos_loss = skeletal_losses(G_tp1_hat, G_tp1, dataset)
+            eos_loss, adj_loss, pos_loss = skeletal_losses(G_tp1_hat, G_tp1, dataset, mask)
             loss = eos_loss + adj_loss + pos_loss
 
             optimizer.zero_grad()
@@ -197,7 +197,7 @@ def get_dataloaders(args, dataset, batch_size, test_frac):
 
 def run_skeletal(args):
     tic = time.time()
-    dataset = WaddleDataset(args.data_path)
+    dataset = WaddleDataset(args.data_path, return_mask=True)
     print('[{:.2f}] Created dataset'.format(time.time() - tic))
     if args.debug:
         dataset.n = 40
