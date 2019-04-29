@@ -22,7 +22,7 @@ model = graph_rnn.GraphRNN(
 )
 
 model.cuda()
-checkpoint_path = "wadld/outputs/multi_run/run2/last.checkpoint"
+checkpoint_path = "wadld/outputs/multi_run/run3/last.checkpoint"
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model'])
 model.eval()
@@ -53,7 +53,6 @@ with torch.no_grad():
     for i in range(max_vertices):
         discrete_features, continuous_features, adjacencies, (hidden, cell) = \
                 model(G_t, (hidden, cell))
-
         G_t = torch.zeros((1, num_feat), device=device)
         G_t = predict_edges(G_t, adjacencies, i)
         #G_t[:, 1:3] = continuous_features.data.squeeze().sigmoid()
@@ -93,15 +92,12 @@ connections = np.where(adj_mat>0)
 edges = [(s, d) for s, d in zip(connections[0], connections[1])]
 
 graph = nx.Graph()
-print(coords)
 for node, coord in enumerate(coords.T):
     graph.add_node(node, pos=(coord[0], coord[1]))
 
 graph.add_edges_from(edges)
 pos = nx.get_node_attributes(graph, 'pos')
-print(pos)
-print(edges)
 nx.draw(graph, pos, node_size=50, node_color='blue', font_size=8, font_weight='bold')
-graph_name = "pngs/"+str(len(coords.T))+"nodes____"+str(len(edges))+"edges.png"
+graph_name = "pngs/generated/"+str(len(coords.T))+"nodes____"+str(len(edges))+"edges.png"
 plt.savefig(graph_name, format="PNG")
 

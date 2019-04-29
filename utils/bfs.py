@@ -11,9 +11,10 @@ from scipy.sparse import csr_matrix
 np.set_printoptions(threshold=np.inf)
 
 pkl_file = "data/preprocessed_data/binarized.pkl"
+#out_file = "data/preprocessed_data/test.pkl"
+out_file = "data/preprocessed_data/permute.pkl"
 data = pickle.load(open(pkl_file, "rb"))
 
-perm_data = {'E': [], 'V': []}
 for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
     if ct % 1000 == 0:
         print("Created {} map permutations".format(ct))
@@ -57,6 +58,17 @@ for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
         np.fill_diagonal(d, 0)
         perm_data['E'].append(d)
         perm_data['V'].append(coords[bft_perm[q]])
-    break
+
+#dataset = WaddleDataset(pkl_file, standardize_positions=False)
+#
+#loader = DataLoader(
+#        dataset,
+#        batch_size=1,
+#        collate_fn=PackCollate())
+#
+#for i, (adj, lengths) in enumerate(loader):
+#    render(adj, "orig")
+#    break
+
 
 pickle.dump(perm_data, open(out_file, "wb"), protocol=pickle.HIGHEST_PROTOCOL)

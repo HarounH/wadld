@@ -58,6 +58,8 @@ def get_args():
     # Hardware
     parser.add_argument('--cuda', action='store_true', help='Use GPU if available or not')
     parser.add_argument("-dp", "--dataparallel", dest="dataparallel", default=False, action="store_true")  # noqa
+    parser.add_argument("--num_layers", dest="num_layers", default=1, type=int, metavar='<int>', help='Number of layers in LSTM model.')
+    parser.add_argument("--hidden_size", dest="hidden_size", default=32, type=int, metavar='<int>', help='Number of nodes per layer LSTM.')
 
     args = parser.parse_args()
 
@@ -117,6 +119,8 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
         discrete_feature_dim=dataset.discrete_feature_dim,
         continuous_feature_dim=dataset.continuous_feature_dim,
         max_vertex_num=dataset.max_vertex_num,
+        rnn_hidden_size=args.hidden_size,
+        rnn_num_layers=args.num_layers
     )
 
     model = model.to(args.device)
