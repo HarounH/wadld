@@ -58,12 +58,11 @@ class WaddleDataset(Dataset):
             inp[:-1, :],  # d - 1, 3 + mx
             self.end_token  # 1, 3 + mx
         ], axis=0)  # d, 3 + mx
-        if return_mask:
-            # TODO : Generate mask
+        if self.return_mask:
             mask = np.tril(
                 np.ones(
-                    inp.shape[0],  # d
-                    inp.shape[1] - (self.discrete_feature_dim + self.continuous_feature_dim)  # mx
+                    (inp.shape[0],  # d
+                    inp.shape[1] - (self.discrete_feature_dim + self.continuous_feature_dim))  # mx
                     )
                 )
             return inp, out, mask

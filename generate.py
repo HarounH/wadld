@@ -8,7 +8,7 @@ from utils.data import WaddleDataset
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if use_cuda else "cpu")
 
-dataset = WaddleDataset("data/preprocessed_data/permuted.pkl")
+dataset = WaddleDataset("data/preprocessed_data/permute.pkl")
 num_feat = dataset.discrete_feature_dim + dataset.continuous_feature_dim \
         + dataset.max_vertex_num 
 # Why doesn't this work?
@@ -21,8 +21,9 @@ model = graph_rnn.GraphRNN(
     max_vertex_num=dataset.max_vertex_num,
 )
 
+run = 11
 model.cuda()
-checkpoint_path = "wadld/outputs/multi_run/run3/last.checkpoint"
+checkpoint_path = "wadld/outputs/multi_run/run"+ str(run) + "/last.checkpoint"
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model'])
 model.eval()
@@ -42,6 +43,7 @@ adj_offset = dataset.discrete_feature_dim + dataset.continuous_feature_dim
 
 def predict_edges(G_t, adjacencies, prev_i):
     edge_weights = adjacencies.data.squeeze().sigmoid()
+    print(edge_weights)
     edge_preds = []
     m = Bernoulli(edge_weights)
     preds = m.sample() 
@@ -69,9 +71,7 @@ with torch.no_grad():
 
 D = np.concatenate(graph, axis=0).T
 
-print(D.shape)
 coords = D[1:3, :]*10000
-print(coords.shape)
 coords = coords.astype(int)
 
 import networkx as nx

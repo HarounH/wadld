@@ -14,12 +14,15 @@ def skeletal_losses(prediction, target, dataset, mask):
         eos_hat.data,
         target.data[:, :dataset.discrete_feature_dim],
     )
+
     adj_loss = bce_logits_fn(
-        adj_hat.data[mask.byte()],
-        target.data[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):][mask.byte()],
+        adj_hat.data[mask.byte().data],
+        target.data[:, (dataset.continuous_feature_dim + dataset.discrete_feature_dim):][mask.byte().data],
     )
+
     pos_loss = (1 - eos) * mse_loss_fn(
         continuous_hat.data,
         target.data[:, dataset.discrete_feature_dim:dataset.continuous_feature_dim],
     )
+
     return eos_loss.mean(), pos_loss.mean(), adj_loss.mean()
