@@ -55,7 +55,7 @@ class WaddleDataset(Dataset):
     def __getitem__(self, idx):
         inp = self.preprocessed[idx].T  # (d, 3 + mx)
         out = np.concatenate([
-            inp[:-1, :],  # d - 1, 3 + mx
+            inp[1:, :],  # d - 1, 3 + mx
             self.end_token  # 1, 3 + mx
         ], axis=0)  # d, 3 + mx
         if self.return_mask:

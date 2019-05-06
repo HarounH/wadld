@@ -15,6 +15,10 @@ pkl_file = "data/preprocessed_data/binarized.pkl"
 out_file = "data/preprocessed_data/permute.pkl"
 data = pickle.load(open(pkl_file, "rb"))
 
+perm_data = {
+    'E': [],
+    'V': [],
+}
 for ct, (pi, coords) in enumerate(zip(data.get('E'), data.get('V'))):
     if ct % 1000 == 0:
         print("Created {} map permutations".format(ct))

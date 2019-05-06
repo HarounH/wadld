@@ -22,6 +22,7 @@ class GraphRNN(nn.Module):
             rnn_num_layers=1,
             batch_first=True,
             rnn_dropout=0,
+            predict_continuous_features=True,
             ):
         super().__init__()
         self.batch_first = batch_first
@@ -31,6 +32,7 @@ class GraphRNN(nn.Module):
         self.rnn_hidden_size = rnn_hidden_size
         self.rnn_num_layers = rnn_num_layers
         self.rnn_dropout = rnn_dropout
+        self.predict_continuous_features = predict_continuous_features
 
         self.theta_net = rnn_constructor(
             discrete_feature_dim + continuous_feature_dim + max_vertex_num,
@@ -46,18 +48,19 @@ class GraphRNN(nn.Module):
             nn.Linear(rnn_hidden_size, discrete_feature_dim),
         )
 
-        self.continuous_feature_net = nn.Sequential(
-            nn.Linear(rnn_hidden_size, rnn_hidden_size),
-            nn.Tanh(),
-            nn.Linear(rnn_hidden_size, continuous_feature_dim),
-        )
+        if predict_continuous_features:  # Otherwise, there are no vertices.
+            self.continuous_feature_net = nn.Sequential(
+                nn.Linear(rnn_hidden_size, rnn_hidden_size),
+                nn.Tanh(),
+                nn.Linear(rnn_hidden_size, continuous_feature_dim),
+            )
 
         self.adjacency_feature_net = nn.Sequential(
             nn.Linear(rnn_hidden_size, rnn_hidden_size),
             nn.Tanh(),
             nn.Linear(rnn_hidden_size, max_vertex_num),
         )
-   
+
 
     def forward(self, G_t, ret_hid=False, *args):
         h, hidden = self.theta_net.forward(G_t, *args)
@@ -65,15 +68,21 @@ class GraphRNN(nn.Module):
             self.discrete_feature_net(h.data),
             h.batch_sizes
         )
-        continuous_features = rnn.PackedSequence(
-            self.continuous_feature_net(h.data),
-            h.batch_sizes
-        )
+
         adjacencies = rnn.PackedSequence(
             self.adjacency_feature_net(h.data),
             h.batch_sizes
         )
-        if ret_hid:
-            return discrete_features, continuous_features, adjacencies, hidden
-        return discrete_features, continuous_features, adjacencies
 
+        if hasattr(self, 'continuous_feature_net'):
+            continuous_features = rnn.PackedSequence(
+                self.continuous_feature_net(h.data),
+                h.batch_sizes
+            )
+            if ret_hid:
+                return discrete_features, continuous_features, adjacencies, hidden
+            return discrete_features, continuous_features, adjacencies
+        else:
+            if ret_hid:
+                return discrete_features, adjacencies, hidden
+            return discrete_features, adjacencies
