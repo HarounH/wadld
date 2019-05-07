@@ -177,6 +177,7 @@ def train_skeletal_model(args, dataset, train_loader, test_loader):
             checkpoint_path = os.path.join(output_dir, "last.checkpoint")
             print('Saving model to {}'.format(checkpoint_path))
             chk = utils.make_checkpoint(model, optimizer, epoch_idx)
+            chk['args'] = vars(args)
             torch.save(chk, checkpoint_path)
     return model, metrics
 

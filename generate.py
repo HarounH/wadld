@@ -1,3 +1,5 @@
+import os
+import argparse
 import torch
 import numpy as np
 from torch.nn.utils import rnn
@@ -10,23 +12,40 @@ device = torch.device("cuda:0" if use_cuda else "cpu")
 
 dataset = WaddleDataset("data/preprocessed_data/permute.pkl")
 num_feat = dataset.discrete_feature_dim + dataset.continuous_feature_dim \
-        + dataset.max_vertex_num 
+        + dataset.max_vertex_num
 # Why doesn't this work?
 #G_t = torch.tensor((), dtype=torch.float, device=device)
 #G_t.new_zeros((num_feat, num_feat))
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-r', '--run', default=-1, help='Run ID to use')
+args = parser.parse_args()
+if args.run == -1:
+    run = 11
+else:
+    run = args.run
+
+checkpoint_path = "wadld/outputs/multi_run/run"+ str(run) + "/last.checkpoint"
+checkpoint = torch.load(checkpoint_path)
+
+if 'args' in checkpoint.keys():
+    rnn_hidden_size = checkpoint['args']['hidden_size']
+    rnn_num_layers = checkpoint['args']['num_layers']
+else:
+    rnn_hidden_size = 64
+    rnn_num_layers = 3
 
 model = graph_rnn.GraphRNN(
     discrete_feature_dim=dataset.discrete_feature_dim,
     continuous_feature_dim=dataset.continuous_feature_dim,
     max_vertex_num=dataset.max_vertex_num,
+    rnn_hidden_size=rnn_hidden_size,
+    rnn_num_layers=rnn_num_layers,
 )
-
-run = 11
-model.cuda()
-checkpoint_path = "wadld/outputs/multi_run/run"+ str(run) + "/last.checkpoint"
-checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model'])
 model.eval()
+model.cuda()
 max_vertices = 50
 
 G_t_mat = np.zeros((1, num_feat))
@@ -46,7 +65,7 @@ def predict_edges(G_t, adjacencies, prev_i):
     print(edge_weights)
     edge_preds = []
     m = Bernoulli(edge_weights)
-    preds = m.sample() 
+    preds = m.sample()
     G_t[:, :prev_i+1] = torch.narrow(preds, 0, 0, prev_i+1)
     return G_t
 
@@ -98,6 +117,6 @@ for node, coord in enumerate(coords.T):
 graph.add_edges_from(edges)
 pos = nx.get_node_attributes(graph, 'pos')
 nx.draw(graph, pos, node_size=50, node_color='blue', font_size=8, font_weight='bold')
-graph_name = "pngs/generated/"+str(len(coords.T))+"nodes____"+str(len(edges))+"edges.png"
+graph_name = "pngs/generated_run{}/".format(run) + str(len(coords.T)) + "nodes____" + str(len(edges)) + "edges.png"
+os.makedirs(os.path.dirname(graph_name), exist_ok=True)
 plt.savefig(graph_name, format="PNG")
-
