@@ -63,7 +63,7 @@ class GraphRNN(nn.Module):
 
 
     def forward(self, G_t, ret_hid=False, *args):
-        h, hidden = self.theta_net.forward(G_t, *args)
+        h, hidden = self.theta_net(G_t, *args)
         discrete_features = rnn.PackedSequence(
             self.discrete_feature_net(h.data),
             h.batch_sizes

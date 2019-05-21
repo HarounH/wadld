@@ -52,8 +52,8 @@ G_t_mat = np.zeros((1, num_feat))
 G_t = torch.tensor(G_t_mat, dtype=torch.float, device=device)
 G_t = rnn.PackedSequence(G_t, torch.tensor([1], dtype=torch.long))
 
-hidden = torch.rand((1, 1, 32), dtype=torch.float, device = device)
-cell = torch.rand((1, 1, 32), dtype=torch.float, device = device)
+hidden = 0.05 * torch.randn((rnn_num_layers, 1, rnn_hidden_size), dtype=torch.float, device = device)
+cell = 0.05 * torch.randn((rnn_num_layers, 1, rnn_hidden_size), dtype=torch.float, device = device)
 
 graph = [G_t.data.cpu().numpy()]
 
@@ -62,7 +62,7 @@ adj_offset = dataset.discrete_feature_dim + dataset.continuous_feature_dim
 
 def predict_edges(G_t, adjacencies, prev_i):
     edge_weights = adjacencies.data.squeeze().sigmoid()
-    print(edge_weights)
+    # print(edge_weights)
     edge_preds = []
     m = Bernoulli(edge_weights)
     preds = m.sample()
@@ -74,6 +74,7 @@ with torch.no_grad():
     for i in range(max_vertices):
         discrete_features, continuous_features, adjacencies, (hidden, cell) = \
                 model(G_t, (hidden, cell))
+        # import pdb; pdb.set_trace()
         G_t = torch.zeros((1, num_feat), device=device)
         G_t = predict_edges(G_t, adjacencies, i)
         #G_t[:, 1:3] = continuous_features.data.squeeze().sigmoid()
